@@ -1,0 +1,207 @@
+<?php
+
+define('PROVISION_CANADAHELPS_ORDER_STATUS_NEW', 1);
+define('PROVISION_CANADAHELPS_ORDER_STATUS_CLONE_INPROGRESS', 2);
+define('PROVISION_CANADAHELPS_ORDER_STATUS_CLONE_COMPLETE', 3);
+define('PROVISION_CANADAHELPS_ORDER_STATUS_IMPORT_INPROGRESS', 4);
+define('PROVISION_CANADAHELPS_ORDER_STATUS_IMPORT_COMPLETE', 5);
+define('PROVISION_CANADAHELPS_ORDER_STATUS_VERIFY_FIRST', 6);
+define('PROVISION_CANADAHELPS_ORDER_STATUS_SITE_KEY_RESET_COMPLETE', 7);
+define('PROVISION_CANADAHELPS_ORDER_STATUS_VERIFY_COMPLETE', 8);
+
+function provision_canadahelps_menu() {
+  $items = [];
+  $items['canadahelps/api/site'] = [
+    'title' => 'Manage a site',
+    'page callback' => 'provision_canadahelps_site',
+    'description' => 'Get/post a site',
+    'access callback' => TRUE,
+    'file' => 'provision_canadahelps.site.inc',
+  ];
+  return $items;
+}
+
+/**
+ * Implementation of hook_hosting_tasks
+ */
+function provision_canadahelps_hosting_tasks() {
+  $tasks = array();
+
+  $tasks['site']['canadahelps-site-key-reset'] = array(
+     'title' => t('Reset Site Key following cloneing'),
+     'description' => t('Reset civicrm site key following the clone'),
+  );
+
+  return $tasks;
+}
+
+/**
+ * Access check, using the $key and optional $secret.
+ * This is extremely basic, since not planning on an open service.
+ * We are only having two trusted systems communicate with each other.
+ *
+ * This functions invokes hook_hosting_restapi_check_access().
+ * If ANY check is accepted, then the check returns TRUE.
+ * If no implementations are found, this check returns TRUE.
+ *
+ * hosting_saas has a basic optional API key check.
+ */
+function provision_canadahelps_check_access($key = NULL, $secret = NULL) {
+  $results = module_invoke_all('provision_canadahelps_check_access', $key, $secret);
+
+  if (! count($results)) {
+    return TRUE;
+  }
+
+  foreach ($results as $key => $val) {
+    if ($val) {
+      return TRUE;
+    }
+  }
+
+  return FALSE;
+}
+
+/**
+ * Checks server capacity limits from hosting_saas.
+ * FIXME: shouldn't this be in hosting_saas?
+ */
+function provision_canadahelps_check_capacity($set_error = FALSE) {
+  $max_saas_capacity = variable_get('provision_canadahelps_max_capacity', 0);
+  $target_platform = variable_get('provision_canadahelps_target_platform', NULL);
+
+  if ($target_platform === NULL) {
+    if ($set_error) {
+      form_set_error('', t('Service not configured!'));
+    }
+
+    return FALSE;
+  }
+
+  if (intval($max_saas_capacity) <= 0) {
+    return TRUE; // Okay
+  } 
+
+  $count = hosting_site_count($target_platform);
+  if ($count >= $max_saas_capacity) {
+    watchdog('provision_canadahelps', t('Max capacity reached'), array(), WATCHDOG_ALERT);
+
+    return FALSE;
+  }
+  else {
+    watchdog('provision_canadahelps', t('Count / capacity: ' . $count . ' / ' . $max_saas_capacity));
+  }
+}
+
+/**
+ * Log a message for a site.
+ *
+ * @param String $url
+ * @param Int $task_id
+ * @param String $message
+ */
+function provision_canadahelps_log($url, $task_id, $message) {
+  // Fetch the order_id of the site
+  $order_id = db_query("SELECT id FROM provision_canadahelps_order WHERE site = :url", array(':url' => $url))->fetchField();
+
+  if (! $order_id) {
+    drush_log('provision_canadahelps_log: This site does not have an order_id. No status logged. URL = ' . $url, 'ok');
+    return;
+  }
+
+  // Write the log
+  $record = new StdClass();
+  $record->order_id = $order_id;
+  $record->task = $task_id;
+  $record->message = $message;
+  $record->created = time();
+
+  drupal_write_record('provision_canadahelps_log', $record);
+
+  // Update the parent status & update time.
+  // FIXME This is not working for some reason
+  $record = new StdClass();
+  $record->current_status = $task_id;
+  $record->updated = time();
+
+  drupal_write_record('provision_canadahelps_log', $record, [
+    'id' => $order_id,
+  ]);
+}
+
+/**
+ * Implements hook_post_hosting_TASK_TYPE_task().
+ */
+function provision_canadahelps_post_hosting_clone_task($task, $data) {
+  if ($task->ref->type == 'site') {
+    provision_canadahelps_log($task->task_args['new_uri'], PROVISION_CANADAHELPS_ORDER_STATUS_CLONE_COMPLETE, 'provision_canadahelps_post_hosting_clone_task completed');
+  }
+}
+
+/**
+ * Implements hook_post_hosting_TASK_TYPE_task().
+ */
+function provision_canadahelps_post_hosting_import_task($task, $data) {
+  if ($task->ref->type == 'site') {
+    provision_canadahelps_log($task->context_options['uri'], PROVISION_CANADAHELPS_ORDER_STATUS_IMPORT_COMPLETE, 'provision_canadahelps_post_hosting_import_task completed');
+    // Reset the CiviCRM site key
+    // Next step in hosting_restapi_post_hosting_login_reset_task
+    hosting_add_task($task->ref->nid, 'canadahelps-site-key-reset');
+  }
+}
+
+/**
+ * Implements hook_post_hosting_TASK_TYPE_task().
+ */
+function provision_canadahelps_post_hosting_verify_task($task, $data) {
+  if ($task->ref->type == 'site') {
+    // Workaround because for some reason provision_canadahelps_order.current_status is never updated
+    $url = $task->context_options['uri'];
+    $order_id = db_query("SELECT id FROM provision_canadahelps_order WHERE site = :url", [':url' => $url])->fetchField();
+    $cpt = db_query("SELECT count(*) as cpt FROM provision_canadahelps_log WHERE order_id = :order_id AND task = :task_id", [':order_id' => $order_id, ':task_id' => PROVISION_CANADAHELPS_ORDER_STATUS_SITE_KEY_RESET_COMPLETE])->fetchField();
+
+    if ($cpt) {
+      provision_canadahelps_log($task->context_options['uri'], PROVISION_CANADAHELPS_ORDER_STATUS_VERIFY_COMPLETE, 'provision_canadahelps_post_hosting_verify_task final verify completed');
+    }
+    else {
+      provision_canadahelps_log($task->context_options['uri'], PROVISION_CANADAHELPS_ORDER_STATUS_VERIFY_FIRST, 'provision_canadahelps_post_hosting_verify_task first verify');
+    }
+  }
+}
+
+/**
+ * Implements hook_post_hosting_TASK_TYPE_task().
+ */
+function provision_canadahelps_post_hosting_canadahelps_site_key_reset_task($task, $data) {
+  if ($task->ref->type == 'site') {
+    $task->ref->no_verify = TRUE;
+    $task->ref->civicrm_sitekey = '';
+    node_save($task->ref);
+
+    hosting_restapi_log($task->ref->title, PROVISION_CANADAHELPS_ORDER_STATUS_SITE_KEY_RESET_COMPLETE, 'provision_canadahelps_post_hosting_canadahelps_site_eky_reset_task completed');
+  }
+}
+
+/**
+ * Helper function to output CORS headers.
+ *
+ * Based on https://stackoverflow.com/a/9866124
+ */
+function provision_canadahelps_cors_headers() {
+  header("Access-Control-Allow-Origin: *"); // FIXME
+  header('Access-Control-Allow-Credentials: false');
+
+  // Access-Control headers are received during OPTIONS requests
+  if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
+    if (isset($_SERVER['HTTP_ACCESS_CONTROL_REQUEST_METHOD'])) {
+      header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
+    }
+
+    if (isset($_SERVER['HTTP_ACCESS_CONTROL_REQUEST_HEADERS'])) {
+      header("Access-Control-Allow-Headers: {$_SERVER['HTTP_ACCESS_CONTROL_REQUEST_HEADERS']}");
+    }
+
+    drupal_exit();
+  }
+}
+

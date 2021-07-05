@@ -1,0 +1,128 @@
+<?php
+
+/**
+ * @file
+ *  Add (and remove) a field in the hosting_site table for the Drupal 9 DMS instance id.
+ */
+
+/**
+ * Implements hook_schema().
+ */
+function provision_canadahelps_schema() {
+  $schema = array();
+
+  $schema['provision_canadahelps_order'] = array(
+    'fields' => array(
+      'id' => array(
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'site' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+      ),
+      'current_status' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'created' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'updated' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'dms_instance_id' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+      ),
+      'token' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+      ),
+      'ip' => array(
+        'type' => 'varchar',
+        'length' => 64,
+        'not null' => TRUE,
+      ),
+    ),
+    'primary key' => array('id'),
+    'indexes' => array('dms_instance_id' => array('dms_instance_id')),
+  );
+
+  $schema['provision_canadahelps_log'] = array(
+    'fields' => array(
+      'id' => array(
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'order_id' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'task' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'message' => array(
+        'type' => 'text',
+        'not null' => TRUE,
+      ),
+      'created' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+    ),
+    'primary key' => array('id'),
+  );
+
+  return $schema;
+}
+
+/**
+ * Implements hook_schema_alter().
+ */
+function provision_canadahelps_schema_alter(&$schema) {
+  // Add civicrm sitekey field to existing schema.
+  $schema['hosting_site']['fields']['dms_instance_id'] = [
+    'type' => 'varchar',
+    'length' => '256',
+    'not null' => FALSE,
+    'default' => NULL,
+  ];
+}
+
+/**
+ * Implements hook_install().
+ */
+function provision_canadahelps_install() {
+  db_add_field('hosting_site', 'dms_instance_id', [
+    'type' => 'varchar',
+    'length' => 256,
+    'not null' => FALSE,
+    'default' => NULL,
+  ]);
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function provision_canadahelps_uninstall() {
+}
