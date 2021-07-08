@@ -36,7 +36,7 @@ function login_to_skynet() {
 }
 
 function getDmsInstance($token = [], $d9_instance_id) {
-  $ch_d9_instance =  variable_get('skynet_d9_instance', 'https://ch-d9.jmaconsulting.biz');
+  $ch_d9_instance = variable_get('skynet_d9_instance', 'https://ch-d9.jmaconsulting.biz');
   $ch = curl_init();
   curl_setopt($ch, CURLOPT_URL, $ch_d9_instance . '/jsonapi/dms_instance/dms_instance/' . $d9_instance_id);
   $headers = [

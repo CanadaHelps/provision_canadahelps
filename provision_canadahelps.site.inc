@@ -168,6 +168,7 @@ function provision_canadahelps_site_post() {
   $record->dms_instance_id = $dms_instance_id;
   $record->site = $url;
   $record->token = sha1($url . uniqid(mt_rand()));
+  $record->job_id = $_POST['job_id'];
   $record->ip = $_SERVER['REMOTE_ADDR'];
   $record->current_status = PROVISION_CANADAHELPS_ORDER_STATUS_NEW;
   $record->created = time();

@@ -56,9 +56,14 @@ function provision_canadahelps_schema() {
         'length' => 64,
         'not null' => TRUE,
       ),
+      'job_id' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+      ),
     ),
     'primary key' => array('id'),
-    'indexes' => array('dms_instance_id' => array('dms_instance_id')),
+    'indexes' => array('dms_instance_id' => array('dms_instance_id'), 'job-id' => array('job_id')),
   );
 
   $schema['provision_canadahelps_log'] = array(
