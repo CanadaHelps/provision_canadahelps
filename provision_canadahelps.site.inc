@@ -168,13 +168,13 @@ function provision_canadahelps_site_post() {
   $record->dms_instance_id = $dms_instance_id;
   $record->site = $url;
   $record->token = sha1($url . uniqid(mt_rand()));
-  $record->job_id = $_POST['job_id'];
+  $record->job_id = $_POST['item_id'];
   $record->ip = $_SERVER['REMOTE_ADDR'];
   $record->current_status = PROVISION_CANADAHELPS_ORDER_STATUS_NEW;
   $record->created = time();
   $record->updated = time();
 
-  drupal_write_record('provision_canahelps_order', $record);
+  drupal_write_record('provision_canadahelps_order', $record);
 
   // Clone a site
   $template_nid = variable_get('provision_canadahelps_template_site_nid', NULL);

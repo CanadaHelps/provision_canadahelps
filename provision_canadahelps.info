@@ -1,0 +1,6 @@
+name = CanadaHelps Provisioning Module
+description = Sets up ability to clone CanadaHelps master
+package = Aegir CiviCRM
+dependencies[] = hosting
+dependencies[] = hosting_civicrm
+core = 7.x
