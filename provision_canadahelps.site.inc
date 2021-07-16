@@ -150,10 +150,9 @@ function provision_canadahelps_site_post() {
   if (!$access) {
     throw new Exception(t('Access denied.'));
   }
-
   // TODO : check if URL format is OK (i.e. no spaces, etc)
   $url = check_plain($_POST['url']);
-  $url = preg_replace('/[^\.a-z0-9]/', '', $url);
+  $url = preg_replace('/[^\.a-z0-9\-]/', '', $url);
 
   if ($url != $_POST['url']) {
     throw new Exception('The "url" parameter had invalid characters.');
