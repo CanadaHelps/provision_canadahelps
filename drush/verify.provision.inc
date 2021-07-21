@@ -105,13 +105,13 @@ function drush_provision_canadahelps_post_provision_verify($url = NULL) {
         'username' => $dms_instance['email_address'],
         'password' => $dms_instance['email_password'],
       ]);
-      $check = civicrm_api3('OptionValue', 'get', ['option_group_id' => 'from_email_address', 'value' => '"' . $dms_instance['email_name'] . '" <' . $dms_instance['email_name'] . '>']);
+      $check = civicrm_api3('OptionValue', 'get', ['option_group_id' => 'from_email_address', 'value' => '"' . $dms_instance['email_name'] . '" <' . $dms_instance['email_address'] . '>']);
       if (empty($check['values'])) { 
         civicrm_api3('OptionValue', 'create', [
           'option_group_id' => 'from_email_address',
-          'value' => '"' . $dms_instance['email_name'] . '" <' . $dms_instance['email_name'] . '>',
-          'label' => '"' . $dms_instance['email_name'] . '" <' . $dms_instance['email_name'] . '>',
-          'name' => '"' . $dms_instance['email_name'] . '" <' . $dms_instance['email_name'] . '>',
+          'value' => '"' . $dms_instance['email_name'] . '" <' . $dms_instance['email_address'] . '>',
+          'label' => '"' . $dms_instance['email_name'] . '" <' . $dms_instance['email_address'] . '>',
+          'name' => '"' . $dms_instance['email_name'] . '" <' . $dms_instance['email_address'] . '>',
           'is_default' => 1,
         ]);
       }
