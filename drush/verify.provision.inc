@@ -93,18 +93,29 @@ function drush_provision_canadahelps_post_provision_verify($url = NULL) {
         $smtp_configuration['smtpPassword'] = $dms_instance['smtp_apikey'];
       }
       Civi::settings()->set('mailing_backend', $smtp_configuration);
-      $currentSetting = civicrm_api3('MailSettings', 'get', ['is_default' => 1]);
-      civicrm_api3('MailSettings', 'create', [
-        'id' => $currentSetting['id'],
+      $bounceProcessingMailing = civicrm_api3('MailSettings', 'get', ['is_default' => 1]);
+      $params = [
         'domain_id' => 1,
         'name' => $dms_instance['email_address'],
-        'is_default' => "1",
         'domain' => 'canadahelps.ca',
         'protocol' => "1",
         'server' => 'imap.gmail.com',
         'username' => $dms_instance['email_address'],
         'password' => $dms_instance['email_password'],
-      ]);
+        'is_ssl' = "1",
+      ];
+      $bounceProcessingMailingAccount = civicrm_api3('MailSettings', 'get', ['is_default' => 1, 'domain_id' => 1]);
+      $inboundMailingAccount = civicrm_api3('MailSettings', 'get', ['is_default' => 0, 'domain_id' => 1, 'sequential' => 1]);
+      $bounceParams = ['is_default' => 1];
+      $inboundParams = ['is_default' => 0];
+      if (!empty($bounceProcessingMailingAccount['values'])) {
+        $bounceParams['id'] = $bounceProcessingMailingAccount['id'];
+      }
+      elseif (!empty($inboundMailingAccount['values'])) {
+        $inboundParams['id'] = $inboundMailingAccount['values'][0]['id'];
+      }
+      civicrm_api3('MailSettings', 'create', array_merge($params, $bounceParams));
+      civicrm_api3('MailSettings', 'create', array_merge($params, $inboundParams));
       $check = civicrm_api3('OptionValue', 'get', ['option_group_id' => 'from_email_address', 'value' => '"' . $dms_instance['email_name'] . '" <' . $dms_instance['email_address'] . '>']);
       if (empty($check['values'])) { 
         civicrm_api3('OptionValue', 'create', [
