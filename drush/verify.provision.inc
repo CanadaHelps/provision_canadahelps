@@ -102,7 +102,7 @@ function drush_provision_canadahelps_post_provision_verify($url = NULL) {
         'server' => 'imap.gmail.com',
         'username' => $dms_instance['email_address'],
         'password' => $dms_instance['email_password'],
-        'is_ssl' = "1",
+        'is_ssl' => "1",
       ];
       $bounceProcessingMailingAccount = civicrm_api3('MailSettings', 'get', ['is_default' => 1, 'domain_id' => 1]);
       $inboundMailingAccount = civicrm_api3('MailSettings', 'get', ['is_default' => 0, 'domain_id' => 1, 'sequential' => 1]);
