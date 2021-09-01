@@ -114,7 +114,7 @@ function drush_provision_canadahelps_post_provision_verify($url = NULL) {
       elseif (!empty($inboundMailingAccount['values'])) {
         $inboundParams['id'] = $inboundMailingAccount['values'][0]['id'];
       }
-//      civicrm_api3('MailSettings', 'create', array_merge($params, $bounceParams));
+      civicrm_api3('MailSettings', 'create', array_merge($params, $bounceParams));
       civicrm_api3('MailSettings', 'create', array_merge($params, $inboundParams));
       $check = civicrm_api3('OptionValue', 'get', ['option_group_id' => 'from_email_address', 'value' => '"' . $dms_instance['email_name'] . '" <' . $dms_instance['email_address'] . '>']);
       if (empty($check['values'])) { 
