@@ -126,6 +126,7 @@ function drush_provision_canadahelps_post_provision_verify($url = NULL) {
           'is_default' => 1,
         ]);
       }
+      civicrm_api3('Extension', 'install', ['key' => 'oauth-client']);
       Civi::settings()->set('provision_canadahelps_initial_done', 1);
     }
   }
