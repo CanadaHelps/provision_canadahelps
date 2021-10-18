@@ -20,7 +20,7 @@ function login_to_skynet() {
     'client_id' => $client_id,
     'client_secret' => $client_secret,
     'grant_type' => 'password',
-    'scope' => 'app',
+    'scope' => 'consumer',
   ];
   curl_setopt($ch, CURLOPT_POSTFIELDS, $post);
   curl_setopt($ch, CURLOPT_HEADER, false);

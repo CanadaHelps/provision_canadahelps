@@ -166,7 +166,7 @@ function provision_canadahelps_post_hosting_verify_task($task, $data) {
     $cpt = db_query("SELECT count(*) as cpt FROM provision_canadahelps_log WHERE order_id = :order_id AND task = :task_id", [':order_id' => $order_id, ':task_id' => PROVISION_CANADAHELPS_ORDER_STATUS_SITE_KEY_RESET_COMPLETE])->fetchField();
 
     if ($cpt) {
-      $skynet_url = variable_get('skynet_d9_instance', 'https://ch-d9.jmaconsulting.biz');
+      $skynet_url = SKYNET_URL;
       $token = skynetLogin();
       $headers = [
         'Authorization: Bearer ' . $token['access_token'],
@@ -230,7 +230,7 @@ function skynetLogin() {
     'client_id' => $client_id,
     'client_secret' => $client_secret,
     'grant_type' => 'password',
-    'scope' => 'app',
+    'scope' => 'consumer',
   ];
   curl_setopt($ch, CURLOPT_POSTFIELDS, $post);
   curl_setopt($ch, CURLOPT_HEADER, false);
