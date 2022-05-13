@@ -23,24 +23,6 @@ function provision_canadahelps_menu() {
 }
 
 /**
- * Implementation of hook_hosting_tasks
- */
-function provision_canadahelps_hosting_tasks() {
-  $tasks = array();
-
-  $tasks['site']['canadahelps-site-key-reset'] = array(
-     'title' => t('Reset Site Key following cloneing'),
-     'description' => t('Reset civicrm site key following the clone'),
-  );
-
-  return $tasks;
-}
-
-function hosting_site_canadahelps_site_key_reset_action($node) {
-  hosting_add_task($node->nid, 'canadahelps-site-key-reset');
-}
-
-/**
  * Access check, using the $key and optional $secret.
  * This is extremely basic, since not planning on an open service.
  * We are only having two trusted systems communicate with each other.
@@ -150,6 +132,14 @@ function provision_canadahelps_post_hosting_clone_task($task, $data) {
 function provision_canadahelps_post_hosting_import_task($task, $data) {
   if ($task->ref->type == 'site') {
     provision_canadahelps_log($task->context_options['uri'], PROVISION_CANADAHELPS_ORDER_STATUS_IMPORT_COMPLETE, 'provision_canadahelps_post_hosting_import_task completed');
+
+    // Change the CiviCRM site key
+    $task->ref->civicrm_sitekey = md5(rand() . mt_rand() . rand() . uniqid('', TRUE) . $url);
+    // maybe not necessary, just a precaution
+    $task->context_options['civicrm_sitekey'] = $task->ref->civicrm_sitekey;
+    node_save($task->ref);
+    provision_canadahelps_log($task->context_options['uri'], PROVISION_CANADAHELPS_ORDER_STATUS_SITE_KEY_RESET_COMPLETE, 'provision_canadahelps_post_hosting_import_task (site key reset) completed');
+    drush_log('provision_canadahelps_post_hosting_import_task: civicrm_sitekey reset complete'), 'ok');
   }
 }
 
@@ -158,36 +148,26 @@ function provision_canadahelps_post_hosting_import_task($task, $data) {
  */
 function provision_canadahelps_post_hosting_verify_task($task, $data) {
   if ($task->ref->type == 'site') {
+    drush_log('provision_canadahelps_post_hosting_verify_task: ' . $task->ref->title, 'ok');
     // Workaround because for some reason provision_canadahelps_order.current_status is never updated
     $url = $task->context_options['uri'];
     $order_id = db_query("SELECT id FROM provision_canadahelps_order WHERE site = :url", [':url' => $url])->fetchField();
     $item_id = db_query("SELECT job_id FROM provision_canadahelps_order WHERE id = :id", [':id' => $order_id])->fetchField();
     $dms_instance_id = db_query("SELECT dms_instance_id FROM provision_canadahelps_order WHERE id = :id", [':id' => $order_id])->fetchField();
-    $cpt = db_query("SELECT count(*) as cpt FROM provision_canadahelps_log WHERE order_id = :order_id AND task = :task_id", [':order_id' => $order_id, ':task_id' => PROVISION_CANADAHELPS_ORDER_STATUS_SITE_KEY_RESET_COMPLETE])->fetchField();
+    drush_log('provision_canadahelps_post_hosting_verify_task: order_id = ' . $order_id, 'ok');
 
-    if ($cpt) {
-      $skynet_url = SKYNET_URL;
-      $token = skynetLogin();
-      $headers = [
-        'Authorization: Bearer ' . $token['access_token'],
-      ];
-      $ch = curl_init();
-      curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-      curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-      curl_setopt($ch, CURLOPT_URL, $skynet_url . '/dms_instance/item_process?job_id=' . $item_id . '&aegir_instance=' .  variable_get('site_name') . '&dms_instance_id=' . $dms_instance_id);
-      curl_exec($ch);
-      provision_canadahelps_log($task->context_options['uri'], PROVISION_CANADAHELPS_ORDER_STATUS_VERIFY_COMPLETE, 'provision_canadahelps_post_hosting_verify_task final verify completed');
-    }
-    else {
-      provision_canadahelps_log($task->context_options['uri'], PROVISION_CANADAHELPS_ORDER_STATUS_VERIFY_FIRST, 'provision_canadahelps_post_hosting_verify_task first verify');
-      if ($order_id) {
-        $task->ref->civicrm_sitekey = '';
-        node_save($task->ref);
-        provision_canadahelps_log($task->context_options['uri'], PROVISION_CANADAHELPS_ORDER_STATUS_SITE_KEY_RESET_COMPLETE, 'provision_canadahelps_post_hosting_canadahelps_site_key_reset_task completed');
-        drush_log('Site Key reset');
-        hosting_add_task($task->ref->nid, 'canadahelps-site-key-reset');
-      }
-    }
+    // Always pingback Skynet so that it has the new key (it could have been edited manually)
+    $skynet_url = SKYNET_URL;
+    $token = skynetLogin();
+    $headers = [
+      'Authorization: Bearer ' . $token['access_token'],
+    ];
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+    curl_setopt($ch, CURLOPT_URL, $skynet_url . '/dms_instance/item_process?job_id=' . $item_id . '&aegir_instance=' .  variable_get('site_name') . '&dms_instance_id=' . $dms_instance_id . '&site_key=' . $task->ref->civicrm_sitekey);
+    curl_exec($ch);
+    provision_canadahelps_log($task->context_options['uri'], PROVISION_CANADAHELPS_ORDER_STATUS_VERIFY_COMPLETE, 'provision_canadahelps_post_hosting_verify_task final verify completed');
   }
 }
 
