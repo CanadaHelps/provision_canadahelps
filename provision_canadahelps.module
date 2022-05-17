@@ -139,7 +139,7 @@ function provision_canadahelps_post_hosting_import_task($task, $data) {
     $task->context_options['civicrm_sitekey'] = $task->ref->civicrm_sitekey;
     node_save($task->ref);
     provision_canadahelps_log($task->context_options['uri'], PROVISION_CANADAHELPS_ORDER_STATUS_SITE_KEY_RESET_COMPLETE, 'provision_canadahelps_post_hosting_import_task (site key reset) completed');
-    drush_log('provision_canadahelps_post_hosting_import_task: civicrm_sitekey reset complete'), 'ok');
+    drush_log('provision_canadahelps_post_hosting_import_task: civicrm_sitekey reset complete', 'ok');
   }
 }
 
